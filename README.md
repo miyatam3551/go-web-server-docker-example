@@ -203,14 +203,25 @@ GitHub Actionsを使用したCI/CDパイプラインを構成しています。
 
 ### CI（継続的インテグレーション）
 
-Pull Request作成時に自動実行されます。
+📁 **ワークフロー定義**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+`main`ブランチへのPull Request作成時に自動実行されます。
 
 | ツール | 目的 |
 |--------|------|
 | hadolint | Dockerfileの静的解析・ベストプラクティスチェック |
 | trivy | セキュリティ脆弱性スキャン（HIGH/CRITICAL） |
 
+**スキップ対象**: 以下のファイルのみの変更時はCIを実行しません（Dockerビルドに影響しないため）
+
+- `*.md`（README等のドキュメント）
+- `docs/**`
+- `LICENSE`
+- `terraform/**`（インフラ定義）
+
 ### CD（継続的デリバリー）
+
+📁 **ワークフロー定義**: [`.github/workflows/cd.yml`](.github/workflows/cd.yml)
 
 タグ（`v*`）をpushすると、AWS ECRにDockerイメージが自動デプロイされます。
 
@@ -397,6 +408,7 @@ IAMロールに以下のポリシーをアタッチ：
 ├── go.mod                    # Go モジュール定義
 ├── Dockerfile                # Dockerイメージ定義
 ├── .dockerignore             # Docker除外ファイル設定
+├── .hadolint.yaml            # hadolint設定（Dockerfile Linter）
 └── README.md                 # このファイル
 ```
 
