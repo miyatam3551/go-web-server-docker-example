@@ -35,7 +35,7 @@ Go言語で作成したシンプルなWebサーバです。Dockerのベストプ
 
 1. **プロジェクトのクローン**
 ```bash
-git clone https://github.com/miyatam3551/go-web-server-docker-example.git
+git clone git@github.com:miyatam3551/go-web-server-docker-example.git
 cd go-web-server-docker-example
 ```
 
