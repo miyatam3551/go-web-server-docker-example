@@ -1,6 +1,2 @@
-# 信頼するレジストリ（これらはタグなしでもOK）
-trustedRegistries:
-  - gcr.io/distroless
-
 # 警告レベルの設定
 failure-threshold: error
