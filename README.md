@@ -205,19 +205,33 @@ GitHub Actionsを使用したCI/CDパイプラインを構成しています。
 
 📁 **ワークフロー定義**: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
 
-`main`ブランチへのPull Request作成時に自動実行されます。
+以下のタイミングで自動実行されます：
+
+| トリガー | 条件 |
+|---------|------|
+| Pull Request | `main`ブランチへのPR作成時 |
+| Push | `main`ブランチへの直接push時（対象ファイルの変更時のみ） |
 
 | ツール | 目的 |
 |--------|------|
 | hadolint | Dockerfileの静的解析・ベストプラクティスチェック |
 | trivy | セキュリティ脆弱性スキャン（HIGH/CRITICAL） |
 
-**スキップ対象**: 以下のファイルのみの変更時はCIを実行しません（Dockerビルドに影響しないため）
+**Push時の実行対象**: 以下のファイルが変更された場合のみCIを実行します
+
+- `Dockerfile`
+- `*.go`
+- `go.mod` / `go.sum`
+- `.hadolint.yaml`
+
+**PR時のスキップ対象**: 以下のファイルのみの変更時はCIを実行しません
 
 - `*.md`（README等のドキュメント）
 - `docs/**`
 - `LICENSE`
 - `terraform/**`（インフラ定義）
+
+**Slack通知**: CI失敗時にSlackへ通知を送信します（要設定、後述）
 
 ### CD（継続的デリバリー）
 
@@ -382,9 +396,29 @@ IAMロールに以下のポリシーをアタッチ：
 
 リポジトリの Settings > Secrets and variables > Actions で以下を設定：
 
-| シークレット名 | 値 |
-|---------------|-----|
-| `AWS_ROLE_ARN` | 作成したIAMロールのARN |
+| シークレット名 | 値 | 用途 |
+|---------------|-----|------|
+| `AWS_ROLE_ARN` | 作成したIAMロールのARN | CD（ECRへのpush） |
+| `SLACK_WEBHOOK_URL` | Slack Incoming Webhook URL | CI失敗通知（任意） |
+
+### Slack通知の設定（任意）
+
+CI失敗時にSlackへ通知を送信する機能があります。
+
+#### Slack Webhook URLの取得
+
+1. [Slack API](https://api.slack.com/apps) にアクセス
+2. 「Create New App」→「From scratch」を選択
+3. App名とワークスペースを設定
+4. 「Incoming Webhooks」を有効化
+5. 「Add New Webhook to Workspace」でチャンネルを選択
+6. 生成されたWebhook URLをコピー
+
+#### GitHubシークレットへの登録
+
+リポジトリの Settings > Secrets and variables > Actions で `SLACK_WEBHOOK_URL` を追加します。
+
+> **Note**: `SLACK_WEBHOOK_URL` が設定されていない場合、通知はスキップされます（エラーにはなりません）。
 
 ## 👨‍💻 開発者向け情報
 
