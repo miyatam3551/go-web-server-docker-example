@@ -2,6 +2,10 @@
 # Goのコンパイル環境を持つイメージを使用し、"builder"という名前をつける
 FROM golang:1.24 AS builder
 
+LABEL version="1.0.0" \
+      maintainer="miyatam3551" \
+      description="simple go webserver"
+
 WORKDIR /app
 
 # 依存関係ファイルを先にコピー（キャッシュ効率化）
@@ -18,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
 
 # ===== 実行ステージ =====
 # distroless: シェルや不要なツールを含まない軽量・セキュアなイメージ
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/base-debian12:nonroot
 
 WORKDIR /app
 
