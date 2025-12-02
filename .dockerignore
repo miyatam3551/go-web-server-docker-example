@@ -1,0 +1,48 @@
+# Git関連
+.git
+.gitignore
+
+# ビルド成果物
+server
+*.exe
+*.test
+*.out
+
+# IDE/エディタ設定
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# ドキュメント
+*.md
+README.md
+LICENSE
+
+# テスト関連
+*_test.go
+test
+coverage.out
+
+# CI/CD設定
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Docker関連
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# ログファイル
+*.log
+
+# 環境変数ファイル
+.env
+.env.local
+.env.*.local
+
+# その他
+tmp
+temp
