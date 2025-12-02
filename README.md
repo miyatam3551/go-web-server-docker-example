@@ -211,6 +211,7 @@ GitHub Actionsを使用したCI/CDパイプラインを構成しています。
 |---------|------|
 | Pull Request | `main`ブランチへのPR作成時 |
 | Push | `main`ブランチへの直接push時（対象ファイルの変更時のみ） |
+| 手動実行 | Actions タブから「Run workflow」で実行 |
 
 | ツール | 目的 |
 |--------|------|
