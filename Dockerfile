@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o server .
 
 # ===== 実行ステージ =====
 # distroless: シェルや不要なツールを含まない軽量・セキュアなイメージ
-FROM gcr.io/distroless/base-debian12
+FROM gcr.io/distroless/base-debian12:nonroot
 
 WORKDIR /app
 
