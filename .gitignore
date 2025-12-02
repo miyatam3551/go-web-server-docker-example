@@ -77,3 +77,31 @@ temp/
 # ====================
 debug
 __debug_bin*
+
+# ====================
+# Terraform
+# ====================
+# ローカルの.terraformディレクトリ
+**/.terraform/*
+
+# .tfstateファイル（リモートバックエンド使用時）
+*.tfstate
+*.tfstate.*
+
+# クラッシュログ
+crash.log
+crash.*.log
+
+# 機密情報を含む可能性のあるファイル
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# バックエンド設定（環境固有）
+terraform/backend.tf
+
+# ロックファイル（コミットしても良いが環境による）
+# .terraform.lock.hcl
+
+# planファイル
+*.tfplan

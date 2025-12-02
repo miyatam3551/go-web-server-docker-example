@@ -1,0 +1,12 @@
+# backend.tf.example
+# このファイルを backend.tf にコピーして、環境に合わせて値を変更してください
+# cp backend.tf.example backend.tf
+
+terraform {
+  backend "s3" {
+    bucket       = "your-terraform-state-bucket"  # S3バケット名を指定
+    key          = "go-web-server-docker-example/terraform.tfstate"
+    region       = "ap-northeast-1"
+    use_lockfile = true  # DynamoDBを使わずにS3ネイティブのロックを使用
+  }
+}

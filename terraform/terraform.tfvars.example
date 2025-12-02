@@ -1,0 +1,6 @@
+# terraform.tfvars.example
+# このファイルは setup.sh によって自動生成されます
+# 手動で作成する場合は、このファイルを terraform.tfvars にコピーしてください
+
+github_repository    = "your-org/your-repo"
+create_oidc_provider = true  # 既存のOIDC Providerがある場合は false

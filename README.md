@@ -11,6 +11,7 @@ Go言語で作成したシンプルなWebサーバです。Dockerのベストプ
   - [Docker実行](#docker実行)
 - [APIエンドポイント](#apiエンドポイント)
 - [Dockerのベストプラクティス](#dockerのベストプラクティス)
+- [CI/CD](#cicd)
 - [開発者向け情報](#開発者向け情報)
 
 ## 🚀 機能
@@ -196,17 +197,207 @@ USER nonroot
 
 **削減率: 約97%！**
 
+## 🔄 CI/CD
+
+GitHub Actionsを使用したCI/CDパイプラインを構成しています。
+
+### CI（継続的インテグレーション）
+
+Pull Request作成時に自動実行されます。
+
+| ツール | 目的 |
+|--------|------|
+| hadolint | Dockerfileの静的解析・ベストプラクティスチェック |
+| trivy | セキュリティ脆弱性スキャン（HIGH/CRITICAL） |
+
+### CD（継続的デリバリー）
+
+タグ（`v*`）をpushすると、AWS ECRにDockerイメージが自動デプロイされます。
+
+```bash
+# 例：v1.0.0 タグを作成してpush
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+### AWS設定（OIDC認証）
+
+CDを利用するには、AWS側で以下の設定が必要です。
+**Terraform（推奨）** または **手動設定** のいずれかを選択してください。
+
+---
+
+#### 方法A: Terraformで構築（推奨）
+
+`terraform/` ディレクトリにIaCコードが用意されています。
+
+```bash
+cd terraform
+
+# 1. セットアップスクリプトを実行（OIDC Provider の有無を自動判定）
+./setup.sh
+
+# 2. バックエンド設定ファイルを作成
+cp backend.tf.example backend.tf
+# backend.tf を編集してS3バケット名を設定
+
+# 3. 初期化 & 適用
+terraform init
+terraform plan
+terraform apply
+
+# 4. 出力されるIAMロールARNをGitHubシークレットに設定
+# リポジトリの Settings > Secrets and variables > Actions で以下を設定：
+# github_actions_role_arn の値を AWS_ROLE_ARN として設定
+```
+
+> **Note**: `setup.sh` は AWS CLI で OIDC Provider の存在を確認し、`terraform.tfvars` を自動生成します。
+
+**変数一覧：**
+| 変数名 | 必須 | デフォルト | 説明 |
+|--------|------|-----------|------|
+| `github_repository` | ✅ | - | GitHubリポジトリ（`owner/repo`形式） |
+| `create_oidc_provider` | - | `true` | OIDC Providerを新規作成するか（既存がある場合は`false`） |
+| `ecr_repository_name` | - | `go-web-server-docker-example` | ECRリポジトリ名 |
+| `aws_region` | - | `ap-northeast-1` | AWSリージョン |
+
+**Terraformで作成されるリソース：**
+- ECRリポジトリ（ライフサイクルポリシー付き）
+- GitHub OIDC Provider（`create_oidc_provider=true`の場合のみ）
+- IAMロール（ECR push権限付き）
+
+---
+
+#### 方法B: 手動で構築
+
+##### 1. ECRリポジトリの作成
+
+```bash
+aws ecr create-repository \
+  --repository-name go-web-server-docker-example \
+  --region ap-northeast-1
+```
+
+##### 2. GitHub OIDC Providerの設定
+
+**AWSコンソール:**
+
+1. IAM > ID プロバイダ > プロバイダを追加
+2. プロバイダのタイプ: OpenID Connect
+3. プロバイダの URL: `https://token.actions.githubusercontent.com`
+4. 対象者: `sts.amazonaws.com`
+
+**AWS CLI:**
+
+```bash
+# OIDC プロバイダーの作成
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com
+```
+
+- OIDCの標準仕様で、JWTトークンには aud (audience) クレームが含まれます。
+- これは「このトークンは誰（どのサービス）向けに発行されたのか」を示します。
+- セキュリティのため、AWS STS向けトークンだけを受け付けるようにする
+
+GitHub Actionsが発行するJWTトークンの例:
+```json
+{
+  "iss": "https://token.actions.githubusercontent.com",
+  "sub": "repo:my-org/my-repo:ref:refs/heads/main",
+  "aud": "sts.amazonaws.com",  // ← これがaudience
+  "exp": 1234567890
+}
+```
+
+##### 3. IAMロールの作成
+
+以下の信頼ポリシーでIAMロールを作成します（`OWNER/REPO`を実際の値に置き換えてください）：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:OWNER/REPO:*"
+        }
+      }
+    }
+  ]
+}
+```
+
+IAMロールに以下のポリシーをアタッチ：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:GetAuthorizationToken"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:PutImage",
+        "ecr:InitiateLayerUpload",
+        "ecr:UploadLayerPart",
+        "ecr:CompleteLayerUpload"
+      ],
+      "Resource": "arn:aws:ecr:ap-northeast-1:ACCOUNT_ID:repository/go-web-server-docker-example"
+    }
+  ]
+}
+```
+
+##### 4. GitHubシークレットの設定
+
+リポジトリの Settings > Secrets and variables > Actions で以下を設定：
+
+| シークレット名 | 値 |
+|---------------|-----|
+| `AWS_ROLE_ARN` | 作成したIAMロールのARN |
+
 ## 👨‍💻 開発者向け情報
 
 ### プロジェクト構成
 
 ```
 .
-├── main.go              # メインアプリケーション
-├── go.mod               # Go モジュール定義
-├── Dockerfile           # Dockerイメージ定義
-├── .dockerignore        # Docker除外ファイル設定
-└── README.md            # このファイル
+├── .github/
+│   └── workflows/
+│       ├── ci.yml            # CI ワークフロー（hadolint, trivy）
+│       └── cd.yml            # CD ワークフロー（ECR push）
+├── terraform/
+│   ├── setup.sh              # セットアップスクリプト（OIDC自動判定）
+│   ├── backend.tf.example    # バックエンド設定テンプレート
+│   ├── terraform.tfvars.example  # 変数値テンプレート
+│   ├── versions.tf           # Terraform/プロバイダーバージョン
+│   ├── variables.tf          # 変数定義
+│   ├── main.tf               # メインリソース（ECR, OIDC, IAM）
+│   └── outputs.tf            # 出力定義
+├── main.go                   # メインアプリケーション
+├── go.mod                    # Go モジュール定義
+├── Dockerfile                # Dockerイメージ定義
+├── .dockerignore             # Docker除外ファイル設定
+└── README.md                 # このファイル
 ```
 
 ### ビルドとテスト
