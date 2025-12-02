@@ -1,3 +1,7 @@
+LABEL version="1.0.0" \
+      maintainer="miyatam3551" \
+      description="simple go webserver"
+
 # ===== ビルドステージ =====
 # Goのコンパイル環境を持つイメージを使用し、"builder"という名前をつける
 FROM golang:1.24 AS builder
